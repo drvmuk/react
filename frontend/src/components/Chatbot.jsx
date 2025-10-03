@@ -1,62 +1,37 @@
 import { useState, useRef, useEffect } from "react";
 import { PaperClipIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
 
-export default function Chatbot() {
-  const [messages, setMessages] = useState([]); // messages from backend + user
+export default function Chatbot({ incomingMessages }) {
+  const [messages, setMessages] = useState([]); // messages passed from LeftPanel
   const [input, setInput] = useState("");
   const [file, setFile] = useState(null);
   const chatEndRef = useRef(null);
 
-  // Scroll to bottom whenever messages change
+  // Scroll to bottom when messages change
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
   useEffect(scrollToBottom, [messages]);
 
-  // Fetch messages from backend periodically or on demand
-  const fetchMessages = async () => {
-    try {
-      const res = await fetch("http://localhost:8000/api/agents/get-chat-messages/");
-      const data = await res.json();
-      // Expect data.messages = [{ type: 'text'|'table', text?, data? }]
-      if (Array.isArray(data.messages)) {
-        setMessages(data.messages);
-      }
-    } catch (err) {
-      console.error("Failed to fetch messages:", err);
-    }
-  };
-
+  // Update messages whenever incomingMessages change
   useEffect(() => {
-    fetchMessages(); // fetch once at start
-    // Optionally, poll every 5s for new messages
-    const interval = setInterval(fetchMessages, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (Array.isArray(incomingMessages)) {
+      setMessages(incomingMessages);
+    }
+  }, [incomingMessages]);
 
-  const handleSend = async () => {
+  // Handle user input
+  const handleSend = () => {
     if (!input && !file) return;
 
-    // Send user message to backend
-    const userMessage = { type: "text", text: input || `Uploaded file: ${file?.name}` };
-    setMessages((prev) => [...prev, { ...userMessage, type: "user" }]);
+    const userMessage = { type: "user", text: input || `Uploaded file: ${file?.name}` };
+    setMessages((prev) => [...prev, userMessage]);
 
-    try {
-      const formData = new FormData();
-      formData.append("message", input);
-      if (file) formData.append("file", file);
-
-      await fetch("http://localhost:8000/api/agents/send-chat-message/", {
-        method: "POST",
-        body: formData,
-      });
-    } catch (err) {
-      console.error("Failed to send message:", err);
-    }
-
+    // Reset inputs
     setInput("");
     setFile(null);
-    fetchMessages(); // fetch updated messages after sending
+
+    // You can also push this message to backend if needed
   };
 
   return (
@@ -66,6 +41,7 @@ export default function Chatbot() {
         {messages.length === 0 && (
           <div className="text-gray-500">Start the conversation...</div>
         )}
+
         {messages.map((msg, idx) => (
           <div
             key={idx}
@@ -80,10 +56,11 @@ export default function Chatbot() {
                   : "bg-white text-gray-800 rounded-bl-none"
               }`}
             >
-              {/* Generic handling */}
-              {msg.type === "text" || msg.type === "llm" ? (
-                msg.text
-              ) : msg.type === "table" || msg.type === "llm_table" ? (
+              {/* Text message */}
+              {(msg.type === "text" || msg.type === "llm") && msg.text}
+
+              {/* Table message */}
+              {(msg.type === "table" || msg.type === "llm_table") && (
                 <div>
                   {msg.text && <div className="font-semibold mb-2">{msg.text}</div>}
                   {Array.isArray(msg.data) && msg.data.length > 0 ? (
@@ -113,9 +90,16 @@ export default function Chatbot() {
                     <div className="text-gray-500 italic">No data available</div>
                   )}
                 </div>
-              ) : (
-                <div className="text-gray-500 italic">Unsupported message type</div>
               )}
+
+              {/* Unsupported type fallback */}
+              {msg.type !== "user" &&
+                msg.type !== "text" &&
+                msg.type !== "llm" &&
+                msg.type !== "table" &&
+                msg.type !== "llm_table" && (
+                  <div className="text-gray-500 italic">Unsupported message type</div>
+                )}
             </div>
           </div>
         ))}
