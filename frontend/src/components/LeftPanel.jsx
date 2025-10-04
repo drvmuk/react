@@ -8,18 +8,20 @@
 //   ArrowsRightLeftIcon,
 //   DocumentArrowUpIcon,
 //   TableCellsIcon,
+//   UserIcon,
+//   RocketLaunchIcon,
 // } from "@heroicons/react/24/outline";
 
-// // Map API icon strings to actual HeroIcon components
+// // Map API icon strings to HeroIcons
 // const iconMapping = {
-//   MagnifyingGlassIcon: MagnifyingGlassIcon,
-//   CubeIcon: CubeIcon,
-//   DocumentDuplicateIcon: DocumentDuplicateIcon,
-//   ArrowDownTrayIcon: ArrowDownTrayIcon,
-//   ShieldCheckIcon: ShieldCheckIcon,
-//   ArrowsRightLeftIcon: ArrowsRightLeftIcon,
-//   DocumentArrowUpIcon: DocumentArrowUpIcon,
-//   TableCellsIcon: TableCellsIcon,
+//   MagnifyingGlassIcon,
+//   CubeIcon,
+//   DocumentDuplicateIcon,
+//   ArrowDownTrayIcon,
+//   ShieldCheckIcon,
+//   ArrowsRightLeftIcon,
+//   DocumentArrowUpIcon,
+//   TableCellsIcon,
 // };
 
 // export default function LeftPanel() {
@@ -30,18 +32,26 @@
 //   const [filePath, setFilePath] = useState("");
 //   const [selectedFile, setSelectedFile] = useState(null);
 //   const [tableName, setTableName] = useState("");
+//   const [progressPercentage, setProgressPercentage] = useState(0);
+//   const [executionMode, setExecutionMode] = useState(
+//     localStorage.getItem("executionMode") || null
+//   );
 
 //   // Fetch steps from Django API
 //   const fetchSteps = () => {
 //     fetch("http://localhost:8000/api/agents/")
 //       .then((res) => res.json())
-//       .then((data) => setSteps(data))
+//       .then((data) => {
+//         setSteps(data);
+//         if (data.length) {
+//           const completed = data.filter((s) => s.status === "completed").length;
+//           setProgressPercentage(Math.round((completed / data.length) * 100));
+//         }
+//       })
 //       .catch((err) => console.error("Error fetching agents:", err));
 //   };
 
-//   useEffect(() => {
-//     fetchSteps();
-//   }, []);
+//   useEffect(() => fetchSteps(), []);
 
 //   const getStepColor = (status) => {
 //     switch (status) {
@@ -57,7 +67,7 @@
 
 //   const handleFileUpload = () => {
 //     if (!filePath || !selectedFile) {
-//       alert("Please provide both a file path and select a file.");
+//       alert("Provide both a file path and select a file.");
 //       return;
 //     }
 
@@ -70,7 +80,14 @@
 //       body: formData,
 //     })
 //       .then((res) => res.json())
-//       .then(() => fetchSteps())
+//       .then(() => {
+//         fetchSteps();
+//         if (executionMode === "autonomous") {
+//           fetch("http://localhost:8000/api/agents/start-flow/", {
+//             method: "POST",
+//           }).then(() => fetchSteps());
+//         }
+//       })
 //       .catch((err) => console.error("Error triggering Data Discovery:", err));
 
 //     setShowFileModal(false);
@@ -84,34 +101,22 @@
 //     setTableName("");
 //   };
 
-//   // Calculate progress percentage based on completed steps
-//   const progressPercentage = steps.length
-//     ? Math.round(
-//         (steps.filter((s) => s.status === "completed").length / steps.length) * 100
-//       )
-//     : 0;
+//   const handleModeSelect = (mode) => {
+//     setExecutionMode(mode);
+//     localStorage.setItem("executionMode", mode);
+//     fetch("http://localhost:8000/api/agents/set-mode/", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({ mode }),
+//     })
+//       .then((res) => res.json())
+//       .then((data) => console.log("Execution mode set:", data))
+//       .catch((err) => console.error("Error setting execution mode:", err));
+//   };
 
 //   return (
 //     <div className="w-full h-full p-4 overflow-y-auto bg-gray-50">
-//       {/* Top tiles */}
-//       <div className="flex gap-4 mb-4">
-//         <div
-//           className="flex-1 p-4 bg-white rounded-lg shadow hover:shadow-lg cursor-pointer flex items-center justify-center gap-2"
-//           onClick={() => setShowFileModal(true)}
-//         >
-//           <DocumentArrowUpIcon className="w-6 h-6" />
-//           <span className="font-medium">File Upload</span>
-//         </div>
-//         <div
-//           className="flex-1 p-4 bg-white rounded-lg shadow hover:shadow-lg cursor-pointer flex items-center justify-center gap-2"
-//           onClick={() => setShowTableModal(true)}
-//         >
-//           <TableCellsIcon className="w-6 h-6" />
-//           <span className="font-medium">Table Ingestion</span>
-//         </div>
-//       </div>
-
-//       {/* Progress Bar with dynamic label and percentage */}
+//       {/* Progress Bar with percentage */}
 //       <div className="mb-4">
 //         <div className="text-sm font-medium text-gray-700 mb-1 flex justify-between">
 //           <span>
@@ -131,6 +136,34 @@
 //         </div>
 //       </div>
 
+//       {/* Execution Mode Icon */}
+//       {executionMode && (
+//         <div className="mb-4 flex items-center gap-2">
+//           {executionMode === "human" && <UserIcon className="w-5 h-5 text-blue-600" />}
+//           {executionMode === "autonomous" && <RocketLaunchIcon className="w-5 h-5 text-green-600" />}
+//           <span className="text-sm font-medium text-gray-700">
+//             {executionMode === "human" ? "Human in the Loop" : "Autonomous"}
+//           </span>
+//         </div>
+//       )}
+
+//       {/* Top Tiles */}
+//       <div className="flex gap-4 mb-6">
+//         <div
+//           className="flex-1 p-4 bg-white rounded-lg shadow hover:shadow-lg cursor-pointer flex items-center justify-center gap-2"
+//           onClick={() => setShowFileModal(true)}
+//         >
+//           <DocumentArrowUpIcon className="w-6 h-6" />
+//           <span className="font-medium">File Upload</span>
+//         </div>
+//         <div
+//           className="flex-1 p-4 bg-white rounded-lg shadow hover:shadow-lg cursor-pointer flex items-center justify-center gap-2"
+//           onClick={() => setShowTableModal(true)}
+//         >
+//           <TableCellsIcon className="w-6 h-6" />
+//           <span className="font-medium">Table Ingestion</span>
+//         </div>
+//       </div>
 
 //       <hr className="w-full h-1 my-4 bg-gray-100 border-0 rounded-sm" />
 
@@ -153,7 +186,31 @@
 //                 <div className="flex justify-between items-center">
 //                   <div className="flex items-center gap-2">
 //                     {IconComponent && <IconComponent className="w-5 h-5" />}
-//                     <h3 className="font-medium">{step.title}</h3>
+//                     <h3 className="font-medium flex items-center gap-1">
+//                       {step.title}
+//                       {step.status === "running" && (
+//                         <svg
+//                           className="animate-spin h-4 w-4 text-yellow-500"
+//                           xmlns="http://www.w3.org/2000/svg"
+//                           fill="none"
+//                           viewBox="0 0 24 24"
+//                         >
+//                           <circle
+//                             className="opacity-25"
+//                             cx="12"
+//                             cy="12"
+//                             r="10"
+//                             stroke="currentColor"
+//                             strokeWidth="4"
+//                           ></circle>
+//                           <path
+//                             className="opacity-75"
+//                             fill="currentColor"
+//                             d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+//                           ></path>
+//                         </svg>
+//                       )}
+//                     </h3>
 //                   </div>
 //                   <svg
 //                     className={`w-4 h-4 transform transition-transform duration-200 ${
@@ -172,11 +229,7 @@
 //                     />
 //                   </svg>
 //                 </div>
-//                 {isOpen && (
-//                   <div className="mt-2 text-sm text-gray-700">
-//                     {step.content || "Loading..."}
-//                   </div>
-//                 )}
+//                 {isOpen && <div className="mt-2 text-sm text-gray-700">{step.content || "Loading..."}</div>}
 //               </div>
 //             );
 //           })
@@ -188,7 +241,6 @@
 //         <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
 //           <div className="bg-white rounded-lg p-6 w-96 shadow-lg">
 //             <h3 className="text-lg font-semibold mb-4">File Upload</h3>
-
 //             <input
 //               type="text"
 //               placeholder="Enter destination file path"
@@ -196,13 +248,11 @@
 //               onChange={(e) => setFilePath(e.target.value)}
 //               className="w-full p-2 border rounded mb-4"
 //             />
-
 //             <input
 //               type="file"
 //               onChange={(e) => setSelectedFile(e.target.files[0])}
 //               className="w-full mb-4"
 //             />
-
 //             <div className="flex justify-end gap-2">
 //               <button
 //                 onClick={() => setShowFileModal(false)}
@@ -293,6 +343,15 @@ export default function LeftPanel() {
     localStorage.getItem("executionMode") || null
   );
 
+  // 🔥 Helper: set a step status locally (running immediately after API call)
+  const setStepStatus = (stepTitle, status) => {
+    setSteps((prevSteps) =>
+      prevSteps.map((s) =>
+        s.title === stepTitle ? { ...s, status } : s
+      )
+    );
+  };
+
   // Fetch steps from Django API
   const fetchSteps = () => {
     fetch("http://localhost:8000/api/agents/")
@@ -327,6 +386,8 @@ export default function LeftPanel() {
       return;
     }
 
+    setStepStatus("Data Discovery", "running");
+
     const formData = new FormData();
     formData.append("file_path", filePath);
     formData.append("file", selectedFile);
@@ -335,24 +396,57 @@ export default function LeftPanel() {
       method: "POST",
       body: formData,
     })
-      .then((res) => res.json())
-      .then(() => {
-        fetchSteps();
-        if (executionMode === "autonomous") {
-          fetch("http://localhost:8000/api/agents/start-flow/", {
-            method: "POST",
-          }).then(() => fetchSteps());
-        }
-      })
-      .catch((err) => console.error("Error triggering Data Discovery:", err));
+    .then(res => res.json())
+    .then(() => {
+      fetchSteps();
+
+      // Send table to Chatbot
+      if (window.addChatMessage) {
+        window.addChatMessage({
+          type: "llm",
+          text: "Data discovered. Please review the table.",
+          table: [
+            { Name: "Alice", Age: 30, Role: "Engineer" },
+            { Name: "Bob", Age: 25, Role: "Analyst" }
+          ]
+        });
+      }
+
+      // Save a global callback for Chatbot to call
+      window.onTableProceed = (modifiedTable) => {
+        console.log("Modified Table received in LeftPanel:", modifiedTable);
+
+        // Now call next API
+        fetch("http://localhost:8000/api/agents/next-step/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ table: modifiedTable }),
+        })
+        .then(res => res.json())
+        .then(data => console.log("Next step API response:", data));
+      };
+    })
+    .catch(err => console.error("Error triggering Data Discovery:", err));
 
     setShowFileModal(false);
     setFilePath("");
     setSelectedFile(null);
   };
 
+
   const handleTableIngestion = () => {
+    // 🔥 Immediately mark Table Ingestion as running
+    setStepStatus("Table Ingestion", "running");
+
     console.log("Ingesting table:", tableName);
+    fetch("http://localhost:8000/api/agents/table-ingest/", {
+      method: "POST",
+      body: JSON.stringify({ table_name: tableName }),
+      headers: { "Content-Type": "application/json" },
+    })
+      .then(() => fetchSteps())
+      .catch((err) => console.error("Error ingesting table:", err));
+
     setShowTableModal(false);
     setTableName("");
   };
@@ -559,4 +653,3 @@ export default function LeftPanel() {
     </div>
   );
 }
-
