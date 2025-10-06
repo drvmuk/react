@@ -352,6 +352,94 @@ export default function LeftPanel() {
     );
   };
 
+  // Check pipeline status code
+// Reusable pipeline status checker
+const checkPipelineStatus = async () => {
+  let status = "Running";
+
+  while (["Running", "In Progress"].includes(status)) {
+    try {
+      const res = await fetch("http://localhost:8000/api/fabric-pipeline-status/");
+      const data = await res.json();
+      status = data.status;
+      console.log("Pipeline status:", status);
+
+      if (["Running", "In Progress"].includes(status)) {
+        // Wait 30 seconds before next check
+        await new Promise(resolve => setTimeout(resolve, 30000));
+      }
+    } catch (err) {
+      console.error("Error checking pipeline status:", err);
+      await new Promise(resolve => setTimeout(resolve, 30000));
+    }
+  }
+
+  return status;
+};
+
+// Main upload + trigger function
+const handleFileUpload = async () => {
+  if (!filePath || !selectedFile) {
+    alert("Provide both a file path and select a file.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file_path", filePath);
+  formData.append("file", selectedFile);
+
+  try {
+    // Trigger pipeline
+    await fetch("http://localhost:8000/api/agents/data-discovery/", {
+      method: "POST",
+      body: formData,
+    });
+
+    fetchSteps();
+
+    // Wait until pipeline finishes
+    const finalStatus = await checkPipelineStatus();
+
+    if (finalStatus === "Completed") {
+      console.log("Pipeline completed!");
+
+      if (window.addChatMessage) {
+        window.addChatMessage({
+          type: "llm",
+          text: "Data discovered. Please review the table.",
+          table: [
+            { Name: "Alice", Age: 30, Role: "Engineer" },
+            { Name: "Bob", Age: 25, Role: "Analyst" }
+          ]
+        });
+      }
+
+      // On proceed from chatbot
+      window.onTableProceed = (modifiedTable) => {
+        console.log("Modified Table received in LeftPanel:", modifiedTable);
+
+        fetch("http://localhost:8000/api/agents/next-step/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ table: modifiedTable }),
+        })
+          .then(res => res.json())
+          .then(data => console.log("Next step API response:", data));
+      };
+
+    } else if (["Failed", "Cancelled"].includes(finalStatus)) {
+      alert(`Pipeline ${finalStatus}. Please check logs.`);
+    }
+  } catch (err) {
+    console.error("Error triggering Data Discovery:", err);
+  }
+
+  setShowFileModal(false);
+  setFilePath("");
+  setSelectedFile(null);
+};
+
+
   // Fetch steps from Django API
   const fetchSteps = () => {
     fetch("http://localhost:8000/api/agents/")
