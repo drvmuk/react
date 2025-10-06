@@ -353,29 +353,35 @@ export default function LeftPanel() {
   };
 
   // Check pipeline status code
-// Reusable pipeline status checker
-const checkPipelineStatus = async () => {
+// Reusable async function to check Fabric pipeline status
+async function checkPipelineStatus(runId) {
   let status = "Running";
 
   while (["Running", "In Progress"].includes(status)) {
     try {
-      const res = await fetch("http://localhost:8000/api/fabric-pipeline-status/");
+      const res = await fetch("http://localhost:8000/api/fabric-pipeline-status/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ run_id: runId }),
+      });
+
       const data = await res.json();
       status = data.status;
-      console.log("Pipeline status:", status);
+      console.log(`Pipeline ${runId} status:`, status);
 
       if (["Running", "In Progress"].includes(status)) {
-        // Wait 30 seconds before next check
+        // Wait 30 seconds before checking again
         await new Promise(resolve => setTimeout(resolve, 30000));
       }
     } catch (err) {
       console.error("Error checking pipeline status:", err);
+      // Wait before retrying in case of error
       await new Promise(resolve => setTimeout(resolve, 30000));
     }
   }
 
   return status;
-};
+}
 
 // Main upload + trigger function
 const handleFileUpload = async () => {
