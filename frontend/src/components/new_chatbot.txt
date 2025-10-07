@@ -1,0 +1,624 @@
+// import React, { useState, useRef, useEffect } from "react";
+// import {
+//   PaperClipIcon,
+//   ArrowRightIcon,
+//   ArrowPathIcon,
+//   DocumentTextIcon,
+//   CloudIcon,
+//   ServerIcon,
+//   FolderIcon,
+//   CircleStackIcon,
+// } from "@heroicons/react/24/outline";
+// import { UserCircleIcon, ComputerDesktopIcon } from "@heroicons/react/24/solid";
+
+// export default function Chatbot({ onTableProceed }) {
+//   const [messages, setMessages] = useState(() => {
+//     const saved = JSON.parse(localStorage.getItem("chatMessages")) || [];
+//     return saved.map((msg) => ({ ...msg, sender: msg.sender || "Agent" }));
+//   });
+
+//   const [input, setInput] = useState("");
+//   const [file, setFile] = useState(null);
+//   const [chatEndRef, setChatEndRef] = useState(null);
+//   const [showSourceOptions, setShowSourceOptions] = useState(true);
+//   const [selectedSource, setSelectedSource] = useState(null);
+//   const [processStarted, setProcessStarted] = useState(false);
+//   const [sourceDetails, setSourceDetails] = useState({
+//     cosmosDbName: "",
+//     cosmosContainer: "",
+//     dbType: "",
+//     connectionString: "",
+//     apiUrl: "",
+//     apiKey: "",
+//   });
+
+//   const scrollToBottom = () => chatEndRef?.scrollIntoView({ behavior: "smooth" });
+//   useEffect(scrollToBottom, [messages]);
+
+//   useEffect(() => {
+//     localStorage.setItem("chatMessages", JSON.stringify(messages));
+//   }, [messages]);
+
+//   useEffect(() => {
+//     window.addChatMessage = ({ text, sender = "Agent", table }) => {
+//       setMessages((prev) => [...prev, { text, sender, type: "llm", table, editable: !!table }]);
+//     };
+//     return () => {
+//       window.addChatMessage = null;
+//     };
+//   }, []);
+
+//   const handleSend = () => {
+//     if (!input && !file) return;
+
+//     if (input) {
+//       setMessages((prev) => [...prev, { type: "user", text: input, sender: "User" }]);
+//       setInput("");
+//     }
+
+//     if (file) {
+//       setMessages((prev) => [...prev, { type: "user", text: `Uploaded file: ${file.name}`, sender: "User" }]);
+//       setFile(null);
+//       setShowSourceOptions(false);
+//       setProcessStarted(true); // ✅ start process after upload
+//     }
+//   };
+
+//   const handleRefresh = () => {
+//     setMessages([]);
+//     localStorage.removeItem("chatMessages");
+//     setShowSourceOptions(true);
+//     setSelectedSource(null);
+//     setProcessStarted(false);
+//   };
+
+//   const handleExport = () => {
+//     const chatText = messages.map((msg) => `${msg.sender}: ${msg.text}`).join("\n");
+//     const blob = new Blob([chatText], { type: "text/plain" });
+//     const url = URL.createObjectURL(blob);
+//     const link = document.createElement("a");
+//     link.href = url;
+//     link.download = "chat_export.txt";
+//     link.click();
+//     URL.revokeObjectURL(url);
+//   };
+
+//   const getAvatar = (sender) => (
+//     <div className="avatar">
+//       <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shadow-sm mr-2">
+//         {sender === "User" ? (
+//           <UserCircleIcon className="w-6 h-6 text-blue-500" />
+//         ) : (
+//           <ComputerDesktopIcon className="w-6 h-6 text-gray-600" />
+//         )}
+//       </div>
+//     </div>
+//   );
+
+//   const handleKeyPress = (e) => {
+//     if (e.key === "Enter") handleSend();
+//   };
+
+//   // -------------------- Source selection UI ----------------------
+
+//   const SourceTiles = () => (
+//     <div className="mt-4 transition-all duration-300 ease-in-out">
+//       <h2 className="text-2xl font-bold text-gray-800 mb-2 tracking-tight text-center">
+//         Select Data Source
+//       </h2>
+//       <p className="text-sm text-gray-600 text-center mb-6 leading-relaxed max-w-lg mx-auto">
+//         Choose how you want to bring data into the system. You can upload files,
+//         connect to an existing database, or pull data from APIs. Select one
+//         of the options below to get started.
+//       </p>
+
+//       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+//         {[
+//           { name: "File Upload", icon: <FolderIcon className="w-10 h-10 text-indigo-500" />, key: "file" },
+//           { name: "Cosmos DB", icon: <CloudIcon className="w-10 h-10 text-blue-500" />, key: "cosmos" },
+//           { name: "Database", icon: <CircleStackIcon className="w-10 h-10 text-green-500" />, key: "db" },
+//           { name: "API Source", icon: <ServerIcon className="w-10 h-10 text-yellow-500" />, key: "api" },
+//         ].map((src) => (
+//           <div
+//             key={src.key}
+//             onClick={() => {
+//               setSelectedSource(src.key);
+//               setShowSourceOptions(false);
+//             }}
+//             className="cursor-pointer bg-white border border-gray-100 rounded-2xl p-5 flex flex-col items-center justify-center text-center shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 ease-in-out hover:border-indigo-400"
+//           >
+//             {src.icon}
+//             <h3 className="mt-3 text-lg font-semibold text-gray-800">{src.name}</h3>
+//             <p className="text-sm text-gray-500 mt-1">
+//               {src.key === "file"
+//                 ? "Upload Excel or CSV"
+//                 : src.key === "cosmos"
+//                 ? "Connect to Azure Cosmos"
+//                 : src.key === "db"
+//                 ? "Connect to SQL DB"
+//                 : "Fetch from API"}
+//             </p>
+//           </div>
+//         ))}
+//       </div>
+//     </div>
+//   );
+
+//   const SourceForm = () => (
+//     <div className="mt-6 bg-white rounded-2xl shadow-md p-6 border border-gray-100">
+//       {selectedSource === "file" && (
+//         <>
+//           <label className="block font-medium text-gray-700 mb-2">Upload File</label>
+//           <input
+//             type="file"
+//             onChange={(e) => setFile(e.target.files[0])}
+//             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+//           />
+//         </>
+//       )}
+
+//       {/* Other source input sections omitted for brevity (same as your version) */}
+
+//       <div className="flex justify-end gap-3 mt-6">
+//         <button
+//           onClick={() => {
+//             setMessages((prev) => [
+//               ...prev,
+//               { type: "user", sender: "User", text: `Selected Source: ${selectedSource}` },
+//             ]);
+//             setSelectedSource(null);
+//             setShowSourceOptions(false);
+//             setProcessStarted(true); // ✅ start process
+//           }}
+//           className="px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm"
+//         >
+//           Run Process
+//         </button>
+//         <button
+//           onClick={() => {
+//             setSelectedSource(null);
+//             setShowSourceOptions(true);
+//           }}
+//           className="px-5 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 shadow-sm"
+//         >
+//           Cancel
+//         </button>
+//       </div>
+//     </div>
+//   );
+
+//   // -------------------- Chat rendering ----------------------
+
+//   return (
+//     <div className="flex flex-col h-[80vh] bg-gradient-to-b from-gray-50 to-gray-100 rounded-2xl shadow-lg p-5 border border-gray-200 transition-all duration-300 ease-in-out">
+//       <div className="flex justify-end gap-2 mb-3">
+//         <button
+//           onClick={handleRefresh}
+//           className="flex items-center gap-1 bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded-lg text-sm"
+//         >
+//           <ArrowPathIcon className="w-4 h-4" /> Refresh
+//         </button>
+//         <button
+//           onClick={handleExport}
+//           className="flex items-center gap-1 bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded-lg text-sm"
+//         >
+//           <DocumentTextIcon className="w-4 h-4" /> Export
+//         </button>
+//       </div>
+
+//       <div className="flex-1 overflow-y-auto mb-4 space-y-4">
+//         {messages.map((msg, idx) => (
+//           <div key={idx} className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}>
+//             <div className={`flex items-start max-w-md ${msg.type === "user" ? "flex-row-reverse" : "flex-row"}`}>
+//               {getAvatar(msg.sender)}
+//               <div
+//                 className={`px-4 py-2 rounded-2xl shadow-sm ${
+//                   msg.type === "user"
+//                     ? "bg-indigo-600 text-white rounded-br-none"
+//                     : "bg-white text-gray-800 rounded-bl-none"
+//                 }`}
+//               >
+//                 <div className="font-semibold text-sm">{msg.sender}</div>
+//                 <div className="mt-1 text-sm leading-relaxed">{msg.text}</div>
+//               </div>
+//             </div>
+//           </div>
+//         ))}
+
+//         {!processStarted && showSourceOptions && <SourceTiles />}
+//         {!processStarted && selectedSource && <SourceForm />}
+
+//         {processStarted && (
+//           <div className="flex flex-col items-center justify-center text-gray-600 mt-10 animate-pulse">
+//             <ArrowPathIcon className="w-8 h-8 mb-2 text-indigo-500 animate-spin" />
+//             <p className="text-sm font-medium">Process started... Logs will appear here shortly.</p>
+//           </div>
+//         )}
+
+//         <div ref={(el) => setChatEndRef(el)} />
+//       </div>
+
+//       {!processStarted && (
+//         <div className="flex items-center gap-2">
+//           <label className="p-2 bg-gray-200 rounded-lg cursor-pointer hover:bg-gray-300 transition">
+//             <PaperClipIcon className="w-5 h-5 text-gray-600" />
+//             <input type="file" className="hidden" onChange={(e) => setFile(e.target.files[0])} />
+//           </label>
+
+//           <input
+//             type="text"
+//             value={input}
+//             onChange={(e) => setInput(e.target.value)}
+//             onKeyPress={handleKeyPress}
+//             placeholder="Type a message..."
+//             className="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+//           />
+
+//           <button
+//             onClick={handleSend}
+//             className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg shadow-sm"
+//           >
+//             <ArrowRightIcon className="w-5 h-5" />
+//           </button>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+import React, { useState, useRef, useEffect } from "react";
+import {
+  PaperClipIcon,
+  ArrowRightIcon,
+  ArrowPathIcon,
+  DocumentTextIcon,
+  CloudIcon,
+  ServerIcon,
+  FolderIcon,
+  CircleStackIcon,
+} from "@heroicons/react/24/outline";
+import { UserCircleIcon, ComputerDesktopIcon } from "@heroicons/react/24/solid";
+
+export default function Chatbot({ onTableProceed }) {
+  const [messages, setMessages] = useState(() => {
+    const saved = JSON.parse(localStorage.getItem("chatMessages")) || [];
+    return saved.map((msg) => ({ ...msg, sender: msg.sender || "Agent" }));
+  });
+
+  const [input, setInput] = useState("");
+  const [file, setFile] = useState(null);
+  const [chatEndRef, setChatEndRef] = useState(null);
+  const [showSourceOptions, setShowSourceOptions] = useState(true);
+  const [selectedSource, setSelectedSource] = useState(null);
+  const [processStarted, setProcessStarted] = useState(false);
+  const [sourceDetails, setSourceDetails] = useState({
+    cosmosDbName: "",
+    cosmosContainer: "",
+    dbType: "",
+    connectionString: "",
+    apiUrl: "",
+    apiKey: "",
+    filePath: "",
+  });
+
+  const scrollToBottom = () => chatEndRef?.scrollIntoView({ behavior: "smooth" });
+  useEffect(scrollToBottom, [messages]);
+
+  useEffect(() => {
+    localStorage.setItem("chatMessages", JSON.stringify(messages));
+  }, [messages]);
+
+  useEffect(() => {
+    window.addChatMessage = ({ text, sender = "Agent", table }) => {
+      setMessages((prev) => [...prev, { text, sender, type: "llm", table, editable: !!table }]);
+    };
+    return () => {
+      window.addChatMessage = null;
+    };
+  }, []);
+
+  const handleSend = () => {
+    if (!input && !file) return;
+
+    if (input) {
+      setMessages((prev) => [...prev, { type: "user", text: input, sender: "User" }]);
+      setInput("");
+    }
+
+    if (file) {
+      setMessages((prev) => [...prev, { type: "user", text: `Uploaded file: ${file.name}`, sender: "User" }]);
+      setFile(null);
+      setShowSourceOptions(false);
+      setProcessStarted(true);
+
+      // Send file info to LeftPanel immediately if needed
+      if (onTableProceed) {
+        onTableProceed({
+          sourceType: "file",
+          file: file,
+          sourceDetails: sourceDetails,
+          chatMessages: messages,
+        });
+      }
+    }
+  };
+
+  const handleRefresh = () => {
+    setMessages([]);
+    localStorage.removeItem("chatMessages");
+    setShowSourceOptions(true);
+    setSelectedSource(null);
+    setProcessStarted(false);
+  };
+
+  const handleExport = () => {
+    const chatText = messages.map((msg) => `${msg.sender}: ${msg.text}`).join("\n");
+    const blob = new Blob([chatText], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "chat_export.txt";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const getAvatar = (sender) => (
+    <div className="avatar">
+      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shadow-sm mr-2">
+        {sender === "User" ? (
+          <UserCircleIcon className="w-6 h-6 text-blue-500" />
+        ) : (
+          <ComputerDesktopIcon className="w-6 h-6 text-gray-600" />
+        )}
+      </div>
+    </div>
+  );
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") handleSend();
+  };
+
+  // -------------------- Source selection UI ----------------------
+
+  const SourceTiles = () => (
+    <div className="mt-4 transition-all duration-300 ease-in-out">
+      <h2 className="text-2xl font-bold text-gray-800 mb-2 tracking-tight text-center">
+        Select Data Source
+      </h2>
+      <p className="text-sm text-gray-600 text-center mb-6 leading-relaxed max-w-lg mx-auto">
+        Choose how you want to bring data into the system. You can upload files,
+        connect to an existing database, or pull data from APIs. Select one
+        of the options below to get started.
+      </p>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { name: "File Upload", icon: <FolderIcon className="w-10 h-10 text-indigo-500" />, key: "file" },
+          { name: "Cosmos DB", icon: <CloudIcon className="w-10 h-10 text-blue-500" />, key: "cosmos" },
+          { name: "Database", icon: <CircleStackIcon className="w-10 h-10 text-green-500" />, key: "db" },
+          { name: "API Source", icon: <ServerIcon className="w-10 h-10 text-yellow-500" />, key: "api" },
+        ].map((src) => (
+          <div
+            key={src.key}
+            onClick={() => {
+              setSelectedSource(src.key);
+              setShowSourceOptions(false);
+            }}
+            className="cursor-pointer bg-white border border-gray-100 rounded-2xl p-5 flex flex-col items-center justify-center text-center shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 ease-in-out hover:border-indigo-400"
+          >
+            {src.icon}
+            <h3 className="mt-3 text-lg font-semibold text-gray-800">{src.name}</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              {src.key === "file"
+                ? "Upload Excel or CSV"
+                : src.key === "cosmos"
+                ? "Connect to Azure Cosmos"
+                : src.key === "db"
+                ? "Connect to SQL DB"
+                : "Fetch from API"}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const SourceForm = () => (
+    <div className="mt-6 bg-white rounded-2xl shadow-md p-6 border border-gray-100 space-y-4">
+      {selectedSource === "file" && (
+        <>
+          <label className="block font-medium text-gray-700">Enter File Path</label>
+          <input
+            type="text"
+            placeholder="Enter file path..."
+            value={sourceDetails.filePath}
+            onChange={(e) => setSourceDetails({ ...sourceDetails, filePath: e.target.value })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+          />
+          <label className="block font-medium text-gray-700">Upload File</label>
+          <input
+            type="file"
+            onChange={(e) => setFile(e.target.files[0])}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+          />
+        </>
+      )}
+
+      {selectedSource === "cosmos" && (
+        <>
+          <label className="block font-medium text-gray-700">Cosmos DB Name</label>
+          <input
+            type="text"
+            placeholder="Enter Cosmos DB name..."
+            value={sourceDetails.cosmosDbName}
+            onChange={(e) => setSourceDetails({ ...sourceDetails, cosmosDbName: e.target.value })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+          />
+          <label className="block font-medium text-gray-700">Cosmos Container</label>
+          <input
+            type="text"
+            placeholder="Enter container..."
+            value={sourceDetails.cosmosContainer}
+            onChange={(e) => setSourceDetails({ ...sourceDetails, cosmosContainer: e.target.value })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+          />
+        </>
+      )}
+
+      {selectedSource === "db" && (
+        <>
+          <label className="block font-medium text-gray-700">Database Type</label>
+          <input
+            type="text"
+            placeholder="Enter DB type..."
+            value={sourceDetails.dbType}
+            onChange={(e) => setSourceDetails({ ...sourceDetails, dbType: e.target.value })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-400 focus:outline-none"
+          />
+          <label className="block font-medium text-gray-700">Connection String</label>
+          <input
+            type="text"
+            placeholder="Enter connection string..."
+            value={sourceDetails.connectionString}
+            onChange={(e) => setSourceDetails({ ...sourceDetails, connectionString: e.target.value })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-400 focus:outline-none"
+          />
+        </>
+      )}
+
+      {selectedSource === "api" && (
+        <>
+          <label className="block font-medium text-gray-700">API URL</label>
+          <input
+            type="text"
+            placeholder="Enter API URL..."
+            value={sourceDetails.apiUrl}
+            onChange={(e) => setSourceDetails({ ...sourceDetails, apiUrl: e.target.value })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+          />
+          <label className="block font-medium text-gray-700">API Key</label>
+          <input
+            type="text"
+            placeholder="Enter API Key..."
+            value={sourceDetails.apiKey}
+            onChange={(e) => setSourceDetails({ ...sourceDetails, apiKey: e.target.value })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+          />
+        </>
+      )}
+
+      <div className="flex justify-end gap-3 mt-4">
+        <button
+          onClick={() => {
+            setMessages((prev) => [
+              ...prev,
+              { type: "user", sender: "User", text: `Selected Source: ${selectedSource}` },
+            ]);
+            if (onTableProceed) {
+              onTableProceed({
+                sourceType: selectedSource,
+                file: file || null,
+                sourceDetails: sourceDetails,
+                chatMessages: messages,
+              });
+            }
+            setSelectedSource(null);
+            setShowSourceOptions(false);
+            setProcessStarted(true);
+          }}
+          className="px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm"
+        >
+          Run Process
+        </button>
+        <button
+          onClick={() => {
+            setSelectedSource(null);
+            setShowSourceOptions(true);
+          }}
+          className="px-5 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 shadow-sm"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+
+  // -------------------- Chat rendering ----------------------
+
+  return (
+    <div className="flex flex-col h-[80vh] bg-gradient-to-b from-gray-50 to-gray-100 rounded-2xl shadow-lg p-5 border border-gray-200 transition-all duration-300 ease-in-out">
+      <div className="flex justify-end gap-2 mb-3">
+        <button
+          onClick={handleRefresh}
+          className="flex items-center gap-1 bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded-lg text-sm"
+        >
+          <ArrowPathIcon className="w-4 h-4" /> Refresh
+        </button>
+        <button
+          onClick={handleExport}
+          className="flex items-center gap-1 bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded-lg text-sm"
+        >
+          <DocumentTextIcon className="w-4 h-4" /> Export
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto mb-4 space-y-4">
+        {messages.map((msg, idx) => (
+          <div key={idx} className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`flex items-start max-w-md ${msg.type === "user" ? "flex-row-reverse" : "flex-row"}`}>
+              {getAvatar(msg.sender)}
+              <div
+                className={`px-4 py-2 rounded-2xl shadow-sm ${
+                  msg.type === "user"
+                    ? "bg-indigo-600 text-white rounded-br-none"
+                    : "bg-white text-gray-800 rounded-bl-none"
+                }`}
+              >
+                <div className="font-semibold text-sm">{msg.sender}</div>
+                <div className="mt-1 text-sm leading-relaxed">{msg.text}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {!processStarted && showSourceOptions && <SourceTiles />}
+        {!processStarted && selectedSource && <SourceForm />}
+
+        {processStarted && (
+          <div className="flex flex-col items-center justify-center text-gray-600 mt-10 animate-pulse">
+            <ArrowPathIcon className="w-8 h-8 mb-2 text-indigo-500 animate-spin" />
+            <p className="text-sm font-medium">Process started... Logs will appear here shortly.</p>
+          </div>
+        )}
+
+        <div ref={(el) => setChatEndRef(el)} />
+      </div>
+
+      {!processStarted && (
+        <div className="flex items-center gap-2">
+          <label className="p-2 bg-gray-200 rounded-lg cursor-pointer hover:bg-gray-300 transition">
+            <PaperClipIcon className="w-5 h-5 text-gray-600" />
+            <input type="file" className="hidden" onChange={(e) => setFile(e.target.files[0])} />
+          </label>
+
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type a message..."
+            className="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+          />
+
+          <button
+            onClick={handleSend}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg shadow-sm"
+          >
+            <ArrowRightIcon className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
